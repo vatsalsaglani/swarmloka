@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "swarmloka"
+version = "0.1.0"
+description = ""
+authors = ["vatsalsaglani <saglanivatsal@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+httpx = "^0.28.0"
+openai = "^1.55.3"
+transformers = "^4.46.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
