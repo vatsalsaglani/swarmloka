@@ -62,7 +62,11 @@ local_swarm = Loka(orchestrator_agent=Agent(
                    }],
                    max_iterations=10)
 
-print(
-    asyncio.run(
-        local_swarm.swarmloka("qwen2.5-coder-3b-instruct-q4_k_m",
-                              {"temperature": 0.2})))
+
+async def main():
+    async for chunk in local_swarm.swarmloka(
+            "qwen2.5-coder-3b-instruct-q4_k_m", {"temperature": 0.2}):
+        print(chunk, end="", flush=True)
+
+
+asyncio.run(main())
