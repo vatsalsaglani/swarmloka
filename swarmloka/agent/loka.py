@@ -137,6 +137,7 @@ class Loka:
             The process is complete - London is at 22°C and you've been notified.
 
             Remember to:
+            - Start with the final answer first
             - Use clear, conversational language
             - Break down complex steps into digestible pieces
             - Show the logical flow from one step to the next
@@ -153,7 +154,7 @@ class Loka:
             "content":
             f'The following is the list of agents and functions used to solve the problem:\n{self.selected_agents}'
         }]
-        print("=====[ANSWER]=====\n")
+        # print("=====[ANSWER]=====\n")
         async for chunk in self.llm.stream_complete(final_messages,
                                                     model_name):
             yield chunk
@@ -162,6 +163,8 @@ class Loka:
         done = False
         while self.current_iteration < self.max_iterations + 1 and not done:
             desired_swarm = await self._iterate(model_name, llm_args)
+            yield {"desired_swarm": desired_swarm}
+            yield "\n\n"
             self.selected_agents.append(
                 {"agent": desired_swarm[0].get("name")})
             func_op = {"role": "assistant", "content": ""}
@@ -180,6 +183,8 @@ class Loka:
                         swarm.get("name"),
                         curr_depth=0,
                         llm_args=llm_args)
+                    yield {"function_args": function_args}
+                    yield "\n\n"
                     if not "functions" in self.selected_agents[-1]:
                         self.selected_agents[-1]["functions"] = []
                     self.selected_agents[-1]["functions"].append({
@@ -209,10 +214,12 @@ class Loka:
                         results = function_args.get("parameters")
                     self.selected_agents[-1]["functions"][-1][
                         "result"] = results
+                    yield {"function_result": results}
+                    yield "\n\n"
                     func_op["content"] += f"Function Result: {results}\n"
                     self.messages[-1]["content"] += f"\n\n{func_op['content']}"
             self.current_iteration += 1
         if done:
+            yield {"final_answer": done}
             async for chunk in self._return_final_answer(model_name, done):
-                print(chunk, end="", flush=True)
-        return self.messages, self.selected_agents
+                yield chunk
