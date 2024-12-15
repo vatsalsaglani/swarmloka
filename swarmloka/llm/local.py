@@ -3,6 +3,7 @@ from openai import AsyncOpenAI
 from typing import Dict, List, Optional, AsyncGenerator
 import re
 from .base import BaseLLM
+from .prompts import LOCAL_SINGLE_FUNCTION_CALL_PROMPT, LOCAL_MULTI_FUNCTION_CALL_PROMPT
 
 
 class LocalLLM(BaseLLM):
@@ -148,6 +149,7 @@ class LocalLLM(BaseLLM):
 
         if isinstance(function_call, dict):
             function_call = [function_call]
+        print(f"FUNCTION CALL: {function_call}s")
         return function_call
 
     async def function_call(self,
@@ -161,49 +163,17 @@ class LocalLLM(BaseLLM):
 
         try:
             # TODO: logic for multi-call and function_call "auto" or selected
-            function_call_prompt = """You are a helpful AI assistant with access to a set of functions. Your task is to assist users by utilizing these functions to respond to their requests. Here are your instructions:
-
-            1. Available Functions:
-            <functions>
-            {functions}
-            </functions>
-
-            2. Using Functions:
-            - You MUST provide exactly ONE function call per response
-            - Your response MUST be enclosed in <functioncall> tags
-            - Parameters MUST match the function's schema exactly
-            - Do not provide any additional text or explanations
-            - For multi-step tasks, determine which step is currently needed based on the conversation history
-            - When all steps are complete, use the 'end' function
-
-            3. Format:
-            <functioncall> {{"name": "functionName", "parameters": {{"param1": "value1", "param2": "value2"}} }} </functioncall>
-
-            4. Few-Shot Examples:
-
-            User: "First check the weather in London, then book a taxi"
-            Assistant: <functioncall> {{"name": "getWeather", "parameters": {{"city": "London"}} }} </functioncall>
-
-            System: Weather in London is 15°C and sunny
-            User: "First check the weather in London, then book a taxi"
-            Assistant: <functioncall> {{"name": "bookTaxi", "parameters": {{"pickup": "London"}} }} </functioncall>
-
-            User: "Convert 100F to Celsius and then send it to admin@example.com"
-            Assistant: <functioncall> {{"name": "convertTemperature", "parameters": {{"value": 100, "from": "F", "to": "C"}} }} </functioncall>
-
-            System: Temperature converted to 37.8C
-            User: "Convert 100F to Celsius and then send it to admin@example.com"
-            Assistant: <functioncall> {{"name": "sendEmail", "parameters": {{"to": "admin@example.com", "body": "Temperature is 37.8C"}} }} </functioncall>
-
-            5. Important:
-            - Examine the conversation history to determine which step needs to be executed next
-            - Return exactly ONE function call that matches the current step
-            - If all steps are complete, use the 'end' function with appropriate parameters
-            - Never include multiple function calls in one response
-            - Return the function call in <functioncall> tags as shown in the examples above
-
-            Remember: Only ONE function call is allowed per response. Determine the current step from the conversation history and return only one function call.
-            """.format(functions=functions)
+            if multi_call:
+                function_call_prompt = LOCAL_MULTI_FUNCTION_CALL_PROMPT.PROMPT.format(
+                    functions=functions)
+            else:
+                function_call_prompt = LOCAL_SINGLE_FUNCTION_CALL_PROMPT.PROMPT.format(
+                    functions=functions)
+                if function_call != "auto":
+                    last_message = messages[-1]
+                    content = last_message.get("content", "")
+                    content = f"{{'function_call': '{function_call}'}}  " + content
+                    messages[-1]["content"] = content
             _messages = [{
                 "role": "system",
                 "content": function_call_prompt
