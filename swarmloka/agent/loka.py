@@ -2,6 +2,7 @@ import json
 from ._types import *
 from ..llm import BaseLLM
 from copy import deepcopy
+from .prompts import FINAL_ANSWER_PROMPT
 
 
 class Loka:
@@ -96,58 +97,10 @@ class Loka:
         return response[-1]
 
     async def _return_final_answer(self, model_name: str, end_output: Dict):
-        final_answer_system_prompt = """You are a helpful AI assistant that explains the problem-solving process to users. You will receive:
-            1. The original user request
-            2. A list of steps taken by different agents
-            3. The final output
-
-            Your task is to create a clear, conversational explanation that helps users understand:
-            - What their request was
-            - Which agents were involved
-            - What functions were used and why
-            - The intermediate results
-            - The final answer
-
-            Format your response as follows:
-            1. Brief restatement of what the user asked for
-            2. Step-by-step breakdown of what happened
-            3. Final result with explanation
-
-            Example:
-
-            Input:
-            User Request: "Check temperature in London and notify if above 20C"
-            Steps: [
-                {"agent": "weather_agent", "function": "getWeather", "params": {"city": "London"}, "output": "22C"},
-                {"agent": "notification_agent", "function": "sendNotification", "params": {"message": "Temperature alert"}, "output": "Notification sent"}
-            ]
-            Final Output: {"why": "Temperature check and notification complete", "final_answer": "Temperature was 22C, notification sent"}
-
-            Response:
-            I helped you check London's temperature and send a notification since it was above 20C. Here's what happened:
-
-            1. Temperature Check:
-            • Weather_agent checked London's current temperature
-            • The temperature was 22°C
-
-            2. Notification:
-            • Since 22°C was above your threshold of 20°C
-            • Notification_agent sent out an alert
-
-            The process is complete - London is at 22°C and you've been notified.
-
-            Remember to:
-            - Start with the final answer first
-            - Use clear, conversational language
-            - Break down complex steps into digestible pieces
-            - Show the logical flow from one step to the next
-            - Highlight key numbers and results
-            - Explain why each step was necessary
-            - Make technical processes understandable to non-technical users"""
         self.messages[-1]["content"] += f'\n\n{end_output.get("content")}'
         final_messages = [{
             "role": "system",
-            "content": final_answer_system_prompt
+            "content": FINAL_ANSWER_PROMPT.PROMPT
         }] + [{
             "role":
             "user",
@@ -221,5 +174,7 @@ class Loka:
             self.current_iteration += 1
         if done:
             yield {"final_answer": done}
+            yield "\n\n"
+            yield "\n\n"
             async for chunk in self._return_final_answer(model_name, done):
                 yield chunk
