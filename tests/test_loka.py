@@ -3,8 +3,6 @@ from pydantic import BaseModel, Field
 from typing import List
 from swarmloka import Loka, LocalLLM
 from swarmloka import Agent, AgentFunction
-# from agent.localswarm import LocalSwarm
-# from agent._types import Agent
 
 
 class Multiply(BaseModel):
@@ -43,8 +41,6 @@ local_add_agent = Agent(name="add",
                                  parameters=Add.model_json_schema(),
                                  _callable=addition_agent)
                         ])
-
-# print("local_add_agent\n", local_add_agent)
 
 llm = LocalLLM("http://localhost:1234/v1", "api-key")
 
