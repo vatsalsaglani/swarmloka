@@ -99,6 +99,7 @@ class LocalLLM(BaseLLM):
             return []
 
         response = await self.complete(messages, model_name, **kwargs)
+        print(f"RESPONSE: {response}")
         extracted_functions = self._extract_function_calls(response)
 
         if not extracted_functions:
@@ -162,7 +163,6 @@ class LocalLLM(BaseLLM):
                             **kwargs):
 
         try:
-            # TODO: logic for multi-call and function_call "auto" or selected
             if multi_call:
                 function_call_prompt = LOCAL_MULTI_FUNCTION_CALL_PROMPT.PROMPT.format(
                     functions=functions)
