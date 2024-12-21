@@ -3,6 +3,7 @@ from ._types import *
 from ..llm import BaseLLM
 from copy import deepcopy
 from .prompts import FINAL_ANSWER_PROMPT
+import asyncio
 
 
 class Loka:
@@ -161,8 +162,27 @@ class Loka:
                         )
                     if "_callable" in agent_function and callable(
                             agent_function.get("_callable")):
-                        results = agent_function.get("_callable")(
-                            **function_args.get("parameters", {}))
+                        func = agent_function.get("_callable")
+                        params = function_args.get("parameters", {})
+                        if asyncio.iscoroutinefunction(func):
+                            results = await func(**params)
+                            if hasattr(results, '__aiter__'):
+                                collected_results = []
+                                async for chunk in results:
+                                    collected_results.append(chunk)
+                                    print(chunk, end="", flush=True)
+                                print("\n\n")
+                                results = collected_results
+                        else:
+                            results = func(**params)
+                            if hasattr(results, '__iter__') and not isinstance(
+                                    results, (str, bytes, dict)):
+                                collected_results = []
+                                for chunk in results:
+                                    collected_results.append(chunk)
+                                    print(chunk, end="", flush=True)
+                                print("\n\n")
+                                results = collected_results
                     else:
                         results = function_args.get("parameters")
                     self.selected_agents[-1]["functions"][-1][
