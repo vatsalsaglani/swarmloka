@@ -4,6 +4,8 @@ from ..llm import BaseLLM
 from copy import deepcopy
 from .prompts import FINAL_ANSWER_PROMPT
 import asyncio
+from rich.console import Console
+from rich.status import Status
 
 
 class Loka:
@@ -118,86 +120,118 @@ class Loka:
                         write_end_result: bool = True,
                         llm_args: Optional[Dict] = {}):
         done = False
+        console = Console()
+
         while self.current_iteration < self.max_iterations + 1 and not done:
-            desired_swarm = await self._iterate(model_name, llm_args)
+            with Status("[bold blue]🤖 Orchestrator thinking...",
+                        console=console) as status:
+                desired_swarm = await self._iterate(model_name, llm_args)
             yield {"desired_swarm": desired_swarm}
             yield "\n\n"
+            status.update(
+                f"[bold green]🤖 Orchestrator selected swarm: {desired_swarm[0].get('name')}"
+            )
             self.selected_agents.append(
                 {"agent": desired_swarm[0].get("name")})
             func_op = {"role": "assistant", "content": ""}
+
             for swarm in desired_swarm:
                 if swarm.get("name") == "end":
                     done = swarm.get("parameters")
+                    reason = done.get("parameters").get("why")
+                    status.update(
+                        f"[bold green]🤖 Orchestrator reached end: {reason}")
                     break
+
                 if not swarm.get("name") in self.swarm_map:
                     raise Exception(
                         f"Swarm: {swarm.get('name')} is not part of the Loka")
                 else:
-                    func_op[
-                        "content"] += f"Selected Agent: {swarm.get('name')}\n"
-                    function_args = await self._function_args(
-                        model_name,
-                        swarm.get("name"),
-                        curr_depth=0,
-                        llm_args=llm_args)
-                    yield {"function_args": function_args}
-                    yield "\n\n"
-                    if not "functions" in self.selected_agents[-1]:
-                        self.selected_agents[-1]["functions"] = []
-                    self.selected_agents[-1]["functions"].append({
-                        "name":
-                        function_args.get("name"),
-                        "parameters":
-                        function_args.get("parameters")
-                    })
-                    func_op[
-                        "content"] += f"Function Name: {function_args.get('name')}\n"
-                    func_op[
-                        "content"] += f"Function Args: {function_args.get('parameters')}\n"
-                    agent_functions = self.swarm_map[swarm.get(
-                        "name")].functions
-                    agent_function = next(
-                        (f for f in agent_functions
-                         if f.get("name") == function_args.get("name")), None)
-                    if agent_function is None:
-                        raise Exception(
-                            f"Function: {function_args.get('name')} is not part of the Swarm: {swarm.get('name')}"
+                    swarm_name = swarm.get('name')
+                    status_msg = f"[bold blue]🔄 Swarm '{swarm_name}' processing..."
+
+                    with Status(status_msg, console=console) as status:
+                        func_op["content"] += f"Selected Agent: {swarm_name}\n"
+                        function_args = await self._function_args(
+                            model_name,
+                            swarm_name,
+                            curr_depth=0,
+                            llm_args=llm_args)
+
+                        status.update(
+                            f"[bold green]🤖 Executing {swarm_name} → {function_args.get('name')}..."
                         )
-                    if "_callable" in agent_function and callable(
-                            agent_function.get("_callable")):
-                        func = agent_function.get("_callable")
-                        params = function_args.get("parameters", {})
-                        if asyncio.iscoroutinefunction(func):
-                            results = await func(**params)
-                            if hasattr(results, '__aiter__'):
-                                collected_results = []
-                                async for chunk in results:
-                                    collected_results.append(chunk)
-                                    # yield chunk
-                                # print("\n\n")
-                                results = collected_results
+
+                        yield {"function_args": function_args}
+                        yield "\n\n"
+
+                        if not "functions" in self.selected_agents[-1]:
+                            self.selected_agents[-1]["functions"] = []
+
+                        self.selected_agents[-1]["functions"].append({
+                            "name":
+                            function_args.get("name"),
+                            "parameters":
+                            function_args.get("parameters")
+                        })
+
+                        func_op[
+                            "content"] += f"Function Name: {function_args.get('name')}\n"
+                        func_op[
+                            "content"] += f"Function Args: {function_args.get('parameters')}\n"
+
+                        agent_functions = self.swarm_map[swarm_name].functions
+                        agent_function = next(
+                            (f for f in agent_functions
+                             if f.get("name") == function_args.get("name")),
+                            None)
+
+                        if agent_function is None:
+                            raise Exception(
+                                f"Function: {function_args.get('name')} is not part of the Swarm: {swarm_name}"
+                            )
+
+                        if "_callable" in agent_function and callable(
+                                agent_function.get("_callable")):
+                            func = agent_function.get("_callable")
+                            params = function_args.get("parameters", {})
+
+                            if asyncio.iscoroutinefunction(func):
+                                results = await func(**params)
+                                if hasattr(results, '__aiter__'):
+                                    collected_results = []
+                                    async for chunk in results:
+                                        collected_results.append(chunk)
+                                    results = collected_results
+                            else:
+                                results = func(**params)
+                                if hasattr(results,
+                                           '__iter__') and not isinstance(
+                                               results, (str, bytes, dict)):
+                                    collected_results = []
+                                    for chunk in results:
+                                        collected_results.append(chunk)
+                                    results = collected_results
                         else:
-                            results = func(**params)
-                            if hasattr(results, '__iter__') and not isinstance(
-                                    results, (str, bytes, dict)):
-                                collected_results = []
-                                for chunk in results:
-                                    collected_results.append(chunk)
-                                    # yield chunk
-                                # print("\n\n")
-                                results = collected_results
-                    else:
-                        results = function_args.get("parameters")
-                    self.selected_agents[-1]["functions"][-1][
-                        "result"] = results
-                    yield {"function_result": results}
-                    yield "\n\n"
-                    func_op["content"] += f"Function Result: {results}\n"
-                    self.messages[-1]["content"] += f"\n\n{func_op['content']}"
+                            results = function_args.get("parameters")
+
+                        self.selected_agents[-1]["functions"][-1][
+                            "result"] = results
+                        yield {"function_result": results}
+                        yield "\n\n"
+
+                        func_op["content"] += f"Function Result: {results}\n"
+                        self.messages[-1][
+                            "content"] += f"\n\n{func_op['content']}"
+
             self.current_iteration += 1
+
         if done:
             if write_end_result:
-                yield {"final_answer": done}
-                yield "\n\n"
-                async for chunk in self._return_final_answer(model_name, done):
-                    yield chunk
+                with Status("[bold green]✨ Generating final answer...",
+                            console=console) as status:
+                    yield {"final_answer": done}
+                    yield "\n\n"
+                    async for chunk in self._return_final_answer(
+                            model_name, done):
+                        yield chunk
