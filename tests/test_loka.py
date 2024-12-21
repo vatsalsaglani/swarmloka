@@ -44,10 +44,7 @@ local_add_agent = Agent(name="add",
 
 # llm = LocalLLM("http://localhost:1234/v1", "api-key")
 model_name = "gpt-4o"
-llm = LocalLLM(
-    "https://api.openai.com/v1",
-    "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"
-)
+llm = LocalLLM("https://api.openai.com/v1", "YOUR_API_KEY_HERE")
 
 local_swarm = Loka(orchestrator_agent=Agent(
     name="orchestrator",
