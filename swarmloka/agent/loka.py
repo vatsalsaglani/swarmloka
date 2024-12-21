@@ -173,7 +173,7 @@ class Loka:
                                 collected_results = []
                                 async for chunk in results:
                                     collected_results.append(chunk)
-                                    yield chunk
+                                    # yield chunk
                                 # print("\n\n")
                                 results = collected_results
                         else:
@@ -183,7 +183,7 @@ class Loka:
                                 collected_results = []
                                 for chunk in results:
                                     collected_results.append(chunk)
-                                    yield chunk
+                                    # yield chunk
                                 # print("\n\n")
                                 results = collected_results
                     else:
