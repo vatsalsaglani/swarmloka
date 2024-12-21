@@ -92,6 +92,56 @@ class Loka:
 
     # def _format_working_output_memory(self):
 
+    async def _verify_input_available_in_working_memory(
+            self,
+            model_name: str,
+            agent_name: str,
+            llm_args: Optional[Dict] = {}):
+
+        class RequiredKeyValue(BaseModel):
+            key: str
+            value: str
+
+        class VerifyAnyRequiredKeyAvailableInWorkingMemory(BaseModel):
+            required_keys: Union[List[RequiredKeyValue], None]
+
+        required_key_function = [{
+            "name":
+            "verify_any_required_key_available_in_working_memory",
+            "description":
+            "Verify if any of the required keys are available in the working memory",
+            "parameters":
+            VerifyAnyRequiredKeyAvailableInWorkingMemory.model_json_schema()
+        }]
+        function = self.swarm_map[agent_name]
+        function_list = list(
+            map(
+                lambda x: {
+                    "name": x.get("name"),
+                    "description": x.get("description"),
+                    "parameters": x.get("parameters")
+                }, function.functions))
+        system_message = f"""
+        You are an expert at verifying if any of the required keys are available in the working memory. Your are provided with the working memory and a set of agents that are already called with their results.
+        You are also provided with the current agent that needs to be called with required parameters. You need to check if any of the required keys for the current agent are available in the working memory and list them out.
+        """
+        user_message = f"""
+        Working Memory: {self.working_output_memory}
+        Called Agents: {self.selected_agents}
+        Current Agent: {function_list}
+        """
+        messages = [{
+            "role": "system",
+            "content": system_message
+        }, {
+            "role": "user",
+            "content": user_message
+        }]
+        response = await self.llm.function_call(messages, model_name,
+                                                required_key_function,
+                                                **llm_args)
+        return response[-1].get("parameters")
+
     async def _function_args(self,
                              model_name: str,
                              agent_name: str,
@@ -99,6 +149,11 @@ class Loka:
                              max_rec_depth: int = 3,
                              curr_depth: int = 0,
                              llm_args: Optional[Dict] = {}):
+        required_keys_available_in_working_memory = await self._verify_input_available_in_working_memory(
+            model_name, agent_name, llm_args)
+        print(
+            f"REQUIRED KEYS AVAILABLE IN WORKING MEMORY: {required_keys_available_in_working_memory}"
+        )
         function = self.swarm_map[agent_name]
         function_list = list(
             map(
@@ -124,6 +179,9 @@ class Loka:
 
             Make sure to only reference keys that exist in the working output memory.
             """
+        if required_keys_available_in_working_memory:
+            curr_messages[-1][
+                "content"] += f"\n\nThe following keys are already available in the working memory: {required_keys_available_in_working_memory}. Please use these keys in the parameters."
         if no_func_call:
             curr_messages[-1][
                 "content"] += f"\n\nDidn't receive a function. Please return only one appropriate function."
