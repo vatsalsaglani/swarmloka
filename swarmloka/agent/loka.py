@@ -113,7 +113,10 @@ class Loka:
                                                     model_name):
             yield chunk
 
-    async def swarmloka(self, model_name: str, llm_args: Optional[Dict] = {}):
+    async def swarmloka(self,
+                        model_name: str,
+                        write_end_result: bool = True,
+                        llm_args: Optional[Dict] = {}):
         done = False
         while self.current_iteration < self.max_iterations + 1 and not done:
             desired_swarm = await self._iterate(model_name, llm_args)
@@ -193,8 +196,8 @@ class Loka:
                     self.messages[-1]["content"] += f"\n\n{func_op['content']}"
             self.current_iteration += 1
         if done:
-            yield {"final_answer": done}
-            yield "\n\n"
-            yield "\n\n"
-            async for chunk in self._return_final_answer(model_name, done):
-                yield chunk
+            if write_end_result:
+                yield {"final_answer": done}
+                yield "\n\n"
+                async for chunk in self._return_final_answer(model_name, done):
+                    yield chunk
