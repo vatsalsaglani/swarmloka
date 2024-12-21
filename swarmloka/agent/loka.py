@@ -14,7 +14,6 @@ class Loka:
                  orchestrator_agent: Agent,
                  swarm: List[Agent],
                  llm: BaseLLM,
-                 messages: List[Dict],
                  max_iterations: int = 10):
         self.orchestrator_agent = orchestrator_agent
         self.llm = llm
@@ -42,7 +41,7 @@ class Loka:
                           _callable="end"))
         self.loka_map = {f.name: f for f in self.orchestrator_agent.functions}
         self.swarm_map = {a.name: a for a in self.swarm}
-        self.messages = messages
+        # self.messages = messages
         self.max_iterations = max_iterations
         self.current_iteration = 0
         self.selected_agents = []
@@ -117,11 +116,13 @@ class Loka:
 
     async def swarmloka(self,
                         model_name: str,
+                        messages: List[Dict],
                         write_end_result: bool = True,
                         llm_args: Optional[Dict] = {}):
         done = False
         console = Console()
-
+        self.messages = messages
+        self.current_iteration = 0
         while self.current_iteration < self.max_iterations + 1 and not done:
             with Status("[bold blue]🤖 Orchestrator thinking...",
                         console=console) as status:
