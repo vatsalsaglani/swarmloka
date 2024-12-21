@@ -45,6 +45,17 @@ class Loka:
         self.max_iterations = max_iterations
         self.current_iteration = 0
         self.selected_agents = []
+        self.working_output_memory = {}
+
+    # TODO: Optimize this to be more efficient
+    def _update_working_output_memory(self):
+        # print(json.dumps(self.selected_agents, indent=2))
+        for ix, swarm in enumerate(self.selected_agents):
+            prefix = f"swarm_{ix}"
+            for ifx, function in enumerate(swarm.get('functions', [])):
+                self.working_output_memory[
+                    f"{prefix}_function_{function['name']}_{ifx}"] = function[
+                        'result']
 
     async def _iterate(self, model_name: str, llm_args: Optional[Dict] = {}):
         curr_messages = deepcopy(self.messages)
@@ -63,6 +74,17 @@ class Loka:
             **llm_args)
         return response_functions
 
+    def _parse_function_parameters(self, parameters: Dict):
+        for key, value in parameters.items():
+            if isinstance(value, str) and value.startswith("swarm_"):
+                if value in self.working_output_memory:
+                    parameters[key] = self.working_output_memory[value]
+                else:
+                    raise KeyError(
+                        f"Key {key} with value {value} is not in the working output memory."
+                    )
+        return parameters
+
     async def _function_args(self,
                              model_name: str,
                              agent_name: str,
@@ -79,6 +101,22 @@ class Loka:
                     "parameters": x.get("parameters")
                 }, function.functions))
         curr_messages = deepcopy(self.messages)
+        curr_messages[-1][
+            "content"] += f"""\n\nBelow is the context of the working output memory in double backticks:
+            ``{json.dumps(self.working_output_memory, indent=2)}``
+
+            When calling your next function, reference any previous output by simply providing the dictionary key in the parameters, e.g.
+
+            <functioncall>{{
+                "name": "someFunction", 
+                "parameters": {{
+                    "previousOutput": "swarm_1_function_create_sql_query_0"
+                    }}
+                }}
+            </functioncall>
+
+            Make sure to only reference keys that exist in the working output memory.
+            """
         if no_func_call:
             curr_messages[-1][
                 "content"] += f"\n\nDidn't receive a function. Please return only one appropriate function."
@@ -96,7 +134,23 @@ class Loka:
             return await self._function_args(model_name, agent_name, True,
                                              max_rec_depth, curr_depth,
                                              llm_args)
-        return response[-1]
+        try:
+            response = response[-1]
+            print(f"RESPONSE PRE PARSE: {json.dumps(response, indent=2)}")
+            response["parameters"] = self._parse_function_parameters(
+                response["parameters"])
+            print(f"RESPONSE POST PARSE: {json.dumps(response, indent=2)}")
+        except KeyError as error:
+            curr_depth += 1
+            if curr_depth > max_rec_depth:
+                raise Exception(
+                    f"Maximum recursion depth reached while waiting for function call from Swarm: {agent_name}"
+                )
+            curr_messages[-1]["content"] += f"\n\n{error}"
+            return await self._function_args(model_name, agent_name, True,
+                                             max_rec_depth, curr_depth,
+                                             llm_args)
+        return response
 
     async def _return_final_answer(self, model_name: str, end_output: Dict):
         self.messages[-1]["content"] += f'\n\n{end_output.get("content")}'
@@ -225,6 +279,8 @@ class Loka:
                         func_op["content"] += f"Function Result: {results}\n"
                         self.messages[-1][
                             "content"] += f"\n\n{func_op['content']}"
+
+                        self._update_working_output_memory()
 
             self.current_iteration += 1
 
