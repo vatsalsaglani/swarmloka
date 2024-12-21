@@ -172,7 +172,8 @@ class LocalLLM(BaseLLM):
                 if function_call != "auto":
                     last_message = messages[-1]
                     content = last_message.get("content", "")
-                    content = f"{{'function_call': '{function_call}'}}  " + content
+                    content = content + f" Use function {{'function_call': '{function_call}'}}"
+                    print(f"NOT AUTO FUNCTION CALLCONTENT:\n {content}")
                     messages[-1]["content"] = content
             _messages = [{
                 "role": "system",
