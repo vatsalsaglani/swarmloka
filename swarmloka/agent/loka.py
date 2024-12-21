@@ -170,22 +170,39 @@ class Loka:
                         if asyncio.iscoroutinefunction(func):
                             results = await func(**params)
                             if hasattr(results, '__aiter__'):
-                                collected_results = []
+                                collected_results = ""
                                 async for chunk in results:
-                                    collected_results.append(chunk)
-                                    # yield chunk
-                                # print("\n\n")
+                                    collected_results += chunk
+                                    yield {"function_result": chunk}
+                                yield "\n\n"
                                 results = collected_results
+                            elif hasattr(results,
+                                         '__iter__') and not isinstance(
+                                             results, (str, bytes, dict)):
+                                collected_results = ""
+                                for chunk in results:
+                                    collected_results += chunk
+                                    yield {"function_result": chunk}
+                                yield "\n\n"
+                                results = collected_results
+                            # else:
+                            #     print("Results attributes:", dir(results))
+                            #     print("Results value:", results)
+                            #     print("Results type:", type(results))
                         else:
                             results = func(**params)
                             if hasattr(results, '__iter__') and not isinstance(
                                     results, (str, bytes, dict)):
-                                collected_results = []
+                                collected_results = ""
                                 for chunk in results:
-                                    collected_results.append(chunk)
-                                    # yield chunk
-                                # print("\n\n")
+                                    collected_results += chunk
+                                    yield {"function_result": chunk}
+                                yield "\n\n"
                                 results = collected_results
+                            # else:
+                            #     print("Results attributes:", dir(results))
+                            #     print("Results value:", results)
+                            #     print("Results type:", type(results))
                     else:
                         results = function_args.get("parameters")
                     self.selected_agents[-1]["functions"][-1][
