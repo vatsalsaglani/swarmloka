@@ -42,7 +42,12 @@ local_add_agent = Agent(name="add",
                                  _callable=addition_agent)
                         ])
 
-llm = LocalLLM("http://localhost:1234/v1", "api-key")
+# llm = LocalLLM("http://localhost:1234/v1", "api-key")
+model_name = "gpt-4o"
+llm = LocalLLM(
+    "https://api.openai.com/v1",
+    "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"
+)
 
 local_swarm = Loka(orchestrator_agent=Agent(
     name="orchestrator",
@@ -56,7 +61,7 @@ local_swarm = Loka(orchestrator_agent=Agent(
 async def main():
     collected_chunks = []
     async for chunk in local_swarm.swarmloka(
-            model_name="qwen2.5-coder-3b-instruct-q4_k_m",
+            model_name=model_name,
             messages=[{
                 "role":
                 "user",
