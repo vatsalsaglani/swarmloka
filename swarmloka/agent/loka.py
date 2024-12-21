@@ -75,15 +75,20 @@ class Loka:
         return response_functions
 
     def _parse_function_parameters(self, parameters: Dict):
-        for key, value in parameters.items():
+
+        def parse_value(value):
             if isinstance(value, str) and value.startswith("swarm_"):
                 if value in self.working_output_memory:
-                    parameters[key] = self.working_output_memory[value]
-                else:
-                    raise KeyError(
-                        f"Key {key} with value {value} is not in the working output memory."
-                    )
-        return parameters
+                    return self.working_output_memory[value]
+                raise KeyError(
+                    f"Key {value} is not in the working output memory.")
+            elif isinstance(value, (list, tuple)):
+                return type(value)([parse_value(v) for v in value])
+            elif isinstance(value, dict):
+                return {k: parse_value(v) for k, v in value.items()}
+            return value
+
+        return {key: parse_value(value) for key, value in parameters.items()}
 
     async def _function_args(self,
                              model_name: str,
