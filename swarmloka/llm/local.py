@@ -99,7 +99,7 @@ class LocalLLM(BaseLLM):
             return []
 
         response = await self.complete(messages, model_name, **kwargs)
-        print(f"RESPONSE: {response}")
+        # print(f"RESPONSE: {response}")
         extracted_functions = self._extract_function_calls(response)
 
         if not extracted_functions:
@@ -150,7 +150,7 @@ class LocalLLM(BaseLLM):
 
         if isinstance(function_call, dict):
             function_call = [function_call]
-        print(f"FUNCTION CALL: {function_call}s")
+        # print(f"FUNCTION CALL: {function_call}s")
         return function_call
 
     async def function_call(self,
@@ -173,7 +173,7 @@ class LocalLLM(BaseLLM):
                     last_message = messages[-1]
                     content = last_message.get("content", "")
                     content = content + f" Use function {{'function_call': '{function_call}'}}"
-                    print(f"NOT AUTO FUNCTION CALLCONTENT:\n {content}")
+                    # print(f"NOT AUTO FUNCTION CALLCONTENT:\n {content}")
                     messages[-1]["content"] = content
             _messages = [{
                 "role": "system",
