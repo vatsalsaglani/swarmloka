@@ -173,8 +173,8 @@ class Loka:
                                 collected_results = []
                                 async for chunk in results:
                                     collected_results.append(chunk)
-                                    print(chunk, end="", flush=True)
-                                print("\n\n")
+                                    yield chunk
+                                # print("\n\n")
                                 results = collected_results
                         else:
                             results = func(**params)
@@ -183,8 +183,8 @@ class Loka:
                                 collected_results = []
                                 for chunk in results:
                                     collected_results.append(chunk)
-                                    print(chunk, end="", flush=True)
-                                print("\n\n")
+                                    yield chunk
+                                # print("\n\n")
                                 results = collected_results
                     else:
                         results = function_args.get("parameters")
