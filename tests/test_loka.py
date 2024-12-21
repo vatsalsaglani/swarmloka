@@ -60,9 +60,13 @@ local_swarm = Loka(orchestrator_agent=Agent(
 
 
 async def main():
+    collected_chunks = []
     async for chunk in local_swarm.swarmloka(
-            "qwen2.5-coder-3b-instruct-q4_k_m", {"temperature": 0.2}):
-        print(chunk, end="", flush=True)
+            model_name="qwen2.5-coder-3b-instruct-q4_k_m",
+            write_end_result=True,
+            llm_args={"temperature": 0.2}):
+        collected_chunks.append(chunk)
+        # print(chunk, end="", flush=True)
 
 
 asyncio.run(main())
