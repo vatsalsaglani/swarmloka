@@ -138,7 +138,8 @@ class Loka:
             for swarm in desired_swarm:
                 if swarm.get("name") == "end":
                     done = swarm.get("parameters")
-                    reason = done.get("parameters").get("why")
+                    # print(done)
+                    reason = done.get("why")
                     status.update(
                         f"[bold green]🤖 Orchestrator reached end: {reason}")
                     break
@@ -228,10 +229,15 @@ class Loka:
 
         if done:
             if write_end_result:
-                with Status("[bold green]✨ Generating final answer...",
-                            console=console) as status:
-                    yield {"final_answer": done}
-                    yield "\n\n"
-                    async for chunk in self._return_final_answer(
-                            model_name, done):
-                        yield chunk
+                console.print(
+                    f"[bold green]✨ Generating final answer...[/bold green]")
+                yield {"final_answer": done}
+                yield "\n\n"
+                async for chunk in self._return_final_answer(model_name, done):
+                    if isinstance(chunk, dict):
+                        console.print(f"[cyan]{chunk}[/cyan]")
+                    elif isinstance(chunk, str):
+                        console.print(f"[cyan]{chunk}[/cyan]", end="")
+                    else:
+                        console.print(f"[yellow]{chunk}[/yellow]")
+                    yield chunk
