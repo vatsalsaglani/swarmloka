@@ -33,13 +33,13 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     User: "Convert 100F to Celsius and then send it to admin@example.com"
     Assistant: <functioncall> {{"name": "sendEmail", "parameters": {{"to": "admin@example.com", "body": "Temperature is 37.8C"}} }} </functioncall>
 
-    User: {{"function_call": "getWeather"}} "What's the weather like in Paris?"
+    User: "What's the weather like in Paris?" Use function {{"function_call": "getWeather"}}
     Assistant: <functioncall> {{"name": "getWeather", "parameters": {{"city": "Paris"}} }} </functioncall>
 
-    User: {{"function_call": "sendEmail"}} "Contact the support team"
+    User: "Contact the support team" Use function {{"function_call": "sendEmail"}}
     Assistant: <functioncall> {{"name": "sendEmail", "parameters": {{"to": "support@example.com", "body": "Support request"}} }} </functioncall>
 
-    User: {{"function_call": "convertTemperature"}} "What's 30C in Fahrenheit?"
+    User: "What's 30C in Fahrenheit?" Use function {{"function_call": "convertTemperature"}}
     Assistant: <functioncall> {{"name": "convertTemperature", "parameters": {{"value": 30, "from": "C", "to": "F"}} }} </functioncall>
 
     5. Important:
@@ -50,6 +50,7 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     - Return the function call in <functioncall> tags as shown in the examples above
     - When a specific function is requested via {{"function_call": function_name}}, you MUST use that function
     - For specific function requests, use the provided function regardless of the conversation history
+    - Always return the function call in <functioncall> tags
 
     Remember: Only ONE function call is allowed per response. When a specific function is requested, use that function. Otherwise, determine the current step from the conversation history and return only one function call.
             """
