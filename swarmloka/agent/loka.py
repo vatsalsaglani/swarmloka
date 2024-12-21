@@ -90,6 +90,8 @@ class Loka:
 
         return {key: parse_value(value) for key, value in parameters.items()}
 
+    # def _format_working_output_memory(self):
+
     async def _function_args(self,
                              model_name: str,
                              agent_name: str,
@@ -108,7 +110,7 @@ class Loka:
         curr_messages = deepcopy(self.messages)
         curr_messages[-1][
             "content"] += f"""\n\nBelow is the context of the working output memory in double backticks:
-            ``{json.dumps(self.working_output_memory, indent=2)}``
+            ``{self.working_output_memory}``
 
             When calling your next function, reference any previous output by simply providing the dictionary key in the parameters, e.g.
 
