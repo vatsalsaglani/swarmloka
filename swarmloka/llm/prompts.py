@@ -13,11 +13,24 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     - For multi-step tasks, determine which step is currently needed based on the conversation history
     - When all steps are complete, use the 'end' function
     - When a specific function call is requested with {{"function_call": function_name}}, you MUST call that exact function
+    - When working memory is provided, use memory keys instead of repeating large parameter values
+    - Look for similar content in working memory and reuse those keys when possible
 
     3. Format:
-    <functioncall> {{"name": "functionName", "parameters": {{"param1": "value1", "param2": "value2"}} }} </functioncall>
+    <functioncall> {{"name": "functionName", "parameters": {{"param1": "value1", "param2": "swarm_0_function_name_0"}} }} </functioncall>
 
-    4. Few-Shot Examples:
+    4. Working Memory Usage:
+    - When you see working memory in the format:
+    ```
+    {{
+        "swarm_0_function_name_0": "some long content...",
+        "swarm_1_function_other_0": "other content..."
+    }}
+    ```
+    - Instead of repeating the content, use the memory key
+    - Example: If you need to use the content from swarm_0_function_name_0, just reference the key
+
+    5. Few-Shot Examples:
 
     User: "First check the weather in London, then book a taxi"
     Assistant: <functioncall> {{"name": "getWeather", "parameters": {{"city": "London"}} }} </functioncall>
@@ -42,7 +55,10 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     User: "What's 30C in Fahrenheit?" Use function {{"function_call": "convertTemperature"}}
     Assistant: <functioncall> {{"name": "convertTemperature", "parameters": {{"value": 30, "from": "C", "to": "F"}} }} </functioncall>
 
-    5. Important:
+    User: With working memory: {{"swarm_0_function_query_0": "SELECT * FROM users"}}
+    Assistant: <functioncall> {{"name": "executeQuery", "parameters": {{"query": "swarm_0_function_query_0"}} }} </functioncall>
+
+    6. Important:
     - Examine the conversation history to determine which step needs to be executed next
     - Return exactly ONE function call that matches the current step
     - If all steps are complete, use the 'end' function with appropriate parameters
@@ -51,6 +67,9 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     - When a specific function is requested via {{"function_call": function_name}}, you MUST use that function
     - For specific function requests, use the provided function regardless of the conversation history
     - Always return the function call in <functioncall> tags
+    - When working memory is available, prioritize using memory keys over repeating content
+    - Look for similar or identical content in working memory before creating new parameters
+    - Use the exact memory key when referencing working memory values
 
     Remember: Only ONE function call is allowed per response. When a specific function is requested, use that function. Otherwise, determine the current step from the conversation history and return only one function call.
             """
@@ -70,12 +89,25 @@ class LOCAL_MULTI_FUNCTION_CALL_PROMPT:
     - Do not provide any additional text or explanations
     - Include all necessary function calls to complete the task in one response
     - When all tasks are complete, include an 'end' function call as the last call
+    - When working memory is provided, use memory keys instead of repeating large parameter values
+    - Look for similar content in working memory and reuse those keys when possible
 
     3. Format:
-    <functioncall> {{"name": "function1Name", "parameters": {{"param1": "value1", "param2": "value2"}} }} </functioncall>
+    <functioncall> {{"name": "function1Name", "parameters": {{"param1": "value1", "param2": "swarm_0_function_name_0"}} }} </functioncall>
     <functioncall> {{"name": "function2Name", "parameters": {{"param1": "value1"}} }} </functioncall>
 
-    4. Few-Shot Examples:
+    4. Working Memory Usage:
+    - When you see working memory in the format:
+    ```
+    {{
+        "swarm_0_function_name_0": "some long content...",
+        "swarm_1_function_other_0": "other content..."
+    }}
+    ```
+    - Instead of repeating the content, use the memory key
+    - Example: If you need to use the content from swarm_0_function_name_0, just reference the key
+
+    5. Few-Shot Examples:
 
     User: "Check weather in London and New York"
     Assistant: <functioncall> {{"name": "getWeather", "parameters": {{"city": "London"}} }} </functioncall>
@@ -93,13 +125,21 @@ class LOCAL_MULTI_FUNCTION_CALL_PROMPT:
     <functioncall> {{"name": "sendEmail", "parameters": {{"to": "mary@example.com", "body": "Weather update"}} }} </functioncall>
     <functioncall> {{"name": "end", "parameters": {{"status": "complete"}} }} </functioncall>
 
-    5. Important:
+    User: "Execute these queries" With working memory: {{"swarm_0_function_query_0": "SELECT * FROM users", "swarm_1_function_query_0": "SELECT * FROM orders"}}
+    Assistant: <functioncall> {{"name": "executeQuery", "parameters": {{"query": "swarm_0_function_query_0"}} }} </functioncall>
+    <functioncall> {{"name": "executeQuery", "parameters": {{"query": "swarm_1_function_query_0"}} }} </functioncall>
+    <functioncall> {{"name": "end", "parameters": {{"status": "complete"}} }} </functioncall>
+
+    6. Important:
     - Include ALL necessary function calls to complete the task in one response
     - Each function call must be in its own <functioncall> tags
     - Function calls will be executed in the order they appear
     - Always include an 'end' function call as the last call
     - Parameters must exactly match the function schemas
     - Do not include any explanatory text between function calls
+    - When working memory is available, prioritize using memory keys over repeating content
+    - Look for similar or identical content in working memory before creating new parameters
+    - Use the exact memory key when referencing working memory values
 
     Remember: Include all necessary function calls in a single response, with each call properly formatted and tagged. Always end with an 'end' function call.
     """
