@@ -50,12 +50,6 @@ local_swarm = Loka(orchestrator_agent=Agent(
     functions=[]),
                    swarm=[local_multiply_agent, local_add_agent],
                    llm=llm,
-                   messages=[{
-                       "role":
-                       "user",
-                       "content":
-                       "Multiply 2 and 3 and then add 4 to the result"
-                   }],
                    max_iterations=10)
 
 
@@ -63,6 +57,12 @@ async def main():
     collected_chunks = []
     async for chunk in local_swarm.swarmloka(
             model_name="qwen2.5-coder-3b-instruct-q4_k_m",
+            messages=[{
+                "role":
+                "user",
+                "content":
+                "Multiply 2 and 3 and then add 4 to the result"
+            }],
             write_end_result=True,
             llm_args={"temperature": 0.2}):
         collected_chunks.append(chunk)
