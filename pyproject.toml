@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "swarmloka"
-version = "0.2.92"
+version = "0.2.93"
 description = ""
 authors = ["vatsalsaglani <saglanivatsal@gmail.com>"]
 readme = "README.md"
