@@ -99,17 +99,36 @@ class Loka:
             llm_args: Optional[Dict] = {}):
 
         class RequiredKeyValue(BaseModel):
-            key: str
-            value: str
+            parameter_key: str = Field(
+                description=
+                "The parameter name required for the agent functions")
+            value_key: str = Field(
+                description="The key in working memory that can be used")
+            reasoning: str = Field(
+                description=
+                "Detailed explanation of why this memory key is suitable")
+            content_type: str = Field(
+                description="Type of content (e.g., list, dict, string, number)"
+            )
+            similarity_score: float = Field(
+                description="How relevant/similar the content is (0-1)",
+                ge=0,
+                le=1)
 
         class VerifyAnyRequiredKeyAvailableInWorkingMemory(BaseModel):
-            required_keys: Union[List[RequiredKeyValue], None]
+            analysis: str = Field(
+                description=
+                "Chain-of-thought analysis of working memory and required parameters"
+            )
+            required_keys: Union[List[RequiredKeyValue], None] = Field(
+                description=
+                "List of memory keys that can be used for parameters")
 
         required_key_function = [{
             "name":
             "verify_any_required_key_available_in_working_memory",
             "description":
-            "Verify if any of the required keys are available in the working memory",
+            "Analyze working memory and identify relevant keys for required parameters",
             "parameters":
             VerifyAnyRequiredKeyAvailableInWorkingMemory.model_json_schema()
         }]
@@ -121,14 +140,103 @@ class Loka:
                     "description": x.get("description"),
                     "parameters": x.get("parameters")
                 }, function.functions))
-        system_message = f"""
-        You are an expert at verifying if any of the required keys are available in the working memory. Your are provided with the working memory and a set of agents that are already called with their results.
-        You are also provided with the current agent that needs to be called with required parameters. You need to check if any of the required keys for the current agent are available in the working memory and list them out.
-        """
+        system_message = """
+        You are an expert at analyzing working memory and matching it with required function parameters.
+        [CRITICAL RULE REGARDING MEMORY]
+        - You have a dictionary called `working memory`, containing keys like:
+        "swarm_0_function_name_0", "swarm_1_function_name_0", etc.
+        - If you need to pass a large data structure (list, object) with more than 5 items,
+        YOU MUST reference the memory key if it's already in the working memory.
+        - If you inline large data that's already present in working memory, that is an error.
+        - ALWAYS scan working memory for a matching or similar data structure before inlining.
+
+        [CONSEQUENCE OF VIOLATION]
+        - If you inline large data that exists in memory, your response will be rejected.
+        - This is to ensure token efficiency and to avoid repeating large data.
+
+        Your task is to:
+        1. First, analyze the working memory contents and understand what type of data is available
+        2. Then, examine the required parameters for the current agent's functions
+        3. Use chain-of-thought reasoning to identify which memory keys could be useful for which parameters
+        4. Consider:
+        - Content type matching (lists, strings, query results, etc.)
+        - Semantic relevance (is the content related to what the parameter needs?)
+        - Data structure similarity (especially for complex objects/lists)
+        - Parameter requirements vs memory content
+
+        Here are some examples:
+
+        Example 1 - Text Generation:
+        Working Memory: {
+            "swarm_0_function_extract_keywords_0": ["AI", "machine learning", "neural networks"],
+            "swarm_1_function_get_context_0": "A comprehensive guide to artificial intelligence"
+        }
+        Analysis: "Working memory contains preprocessed keywords and context. For a text generation function requiring both keywords and context, we have exact matches available."
+        Required Keys: [
+            {
+                "parameter_key": "keywords",
+                "value_key": "swarm_0_function_extract_keywords_0",
+                "reasoning": "Contains preprocessed keywords in the required list format",
+                "content_type": "list",
+                "similarity_score": 1.0
+            }
+        ]
+
+        Example 2 - Image Analysis:
+        Working Memory: {
+            "swarm_0_function_process_image_0": {
+                "features": ["face", "landscape"],
+                "metadata": {"width": 1024, "height": 768}
+            }
+        }
+        Analysis: "Memory contains processed image features and metadata. For an image classification function needing feature data, we have a relevant structured object."
+        Required Keys: [
+            {
+                "parameter_key": "image_features",
+                "value_key": "swarm_0_function_process_image_0",
+                "reasoning": "Contains processed image features in required format",
+                "content_type": "dict",
+                "similarity_score": 0.9
+            }
+        ]
+
+        Example 3 - Data Processing:
+        Working Memory: {
+            "swarm_0_function_fetch_data_0": [
+                {"id": 1, "value": "test1"},
+                {"id": 2, "value": "test2"},
+                {"id": 3, "value": "test3"}
+            ]
+        }
+        Analysis: "Memory contains a list of data records. For a function requiring structured data input, this matches the expected format."
+        Required Keys: [
+            {
+                "parameter_key": "input_data",
+                "value_key": "swarm_0_function_fetch_data_0",
+                "reasoning": "Contains structured data in the required list format",
+                "content_type": "list",
+                "similarity_score": 1.0
+            }
+        ]"""
+
         user_message = f"""
-        Working Memory: {self.working_output_memory}
-        Called Agents: {self.selected_agents}
-        Current Agent: {function_list}
+        Working Memory: {json.dumps(self.working_output_memory, indent=2)}
+        Current Agent Functions: {json.dumps(function_list, indent=2)}
+
+        Following the critical rules about memory usage, analyze the working memory and identify any content that could be used for the required parameters.
+
+        [REQUIRED ANALYSIS STEPS]
+        1. First, examine all working memory keys and their content types
+        2. Then, look at each required parameter in the agent functions
+        3. For each parameter, check if there's matching content in memory
+        4. Evaluate similarity and relevance of any potential matches
+        5. Provide detailed reasoning for each match
+
+        Remember:
+        - You MUST identify any large data structures (>5 items) in memory
+        - You MUST provide similarity scores for each match
+        - You MUST explain your reasoning for each match
+        - Failure to use available memory keys will result in rejection
         """
         messages = [{
             "role": "system",
@@ -180,8 +288,16 @@ class Loka:
             Make sure to only reference keys that exist in the working output memory.
             """
         if required_keys_available_in_working_memory:
+            memory_warning = """
+            [CRITICAL MEMORY USAGE REQUIREMENT]
+            The following keys are available in working memory and MUST be used instead of inlining data:
+            - Failure to use these keys will result in IMMEDIATE REJECTION
+            - Large data structures (>5 items) MUST use memory keys
+            - Check content types and structures for matches
+            - Prioritize exact matches, then similar structures
+            """
             curr_messages[-1][
-                "content"] += f"\n\nThe following keys are already available in the working memory: {required_keys_available_in_working_memory}. Please use these keys in the parameters."
+                "content"] += f"\n\n{memory_warning}\n{json.dumps(required_keys_available_in_working_memory, indent=2)}. Failure to use these memory keys will result in rejection."
         if no_func_call:
             curr_messages[-1][
                 "content"] += f"\n\nDidn't receive a function. Please return only one appropriate function."
