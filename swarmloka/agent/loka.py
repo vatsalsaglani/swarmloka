@@ -248,6 +248,11 @@ class Loka:
         response = await self.llm.function_call(messages, model_name,
                                                 required_key_function,
                                                 **llm_args)
+        print(
+            f"WORKING MEMORY VERIFICATION RESPONSE: {json.dumps(response, indent=2)}"
+        )
+        if len(response) == 0:
+            return None
         return response[-1].get("parameters")
 
     async def _function_args(self,
