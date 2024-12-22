@@ -92,7 +92,42 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     - Token efficiency is critical - reuse memory keys whenever possible
 
     Remember: Only ONE function call is allowed per response. When a specific function is requested, use that function. Otherwise, determine the current step from the conversation history and return only one function call.
-            """
+
+    [CRITICAL MEMORY USAGE RULES - MANDATORY]
+    When working memory is provided with a warning like:
+    ```
+    [CRITICAL MEMORY USAGE REQUIREMENT]
+    The following keys are available in working memory and MUST be used:
+    {{
+        "parameter_key": "data",
+        "value_key": "swarm_0_function_name_0",
+        ...
+    }}
+    ```
+    YOU MUST:
+    1. Use the exact memory keys provided in the warning
+    2. NEVER recreate or inline data that exists in memory
+    3. ALWAYS use the memory key instead of the actual data
+    4. Follow the parameter_key to value_key mapping exactly
+
+    [VIOLATION CONSEQUENCES]
+    - Creating new data when a memory key exists is a CRITICAL ERROR
+    - Your response will be REJECTED if you don't use provided memory keys
+    - Multiple violations will result in task failure
+    - No exceptions to this rule are allowed
+
+    Example with Memory Warning:
+    User: With working memory warning:
+    {{
+        "parameter_key": "query_result",
+        "value_key": "swarm_0_query_result_0"
+    }}
+    Assistant: <functioncall> {{"name": "process_data", "parameters": {{"query_result": "swarm_0_query_result_0"}} }} </functioncall>
+
+    INCORRECT (will be rejected):
+    <functioncall> {{"name": "process_data", "parameters": {{"query_result": [{{"id": 1, "data": "value"}}]}} }} </functioncall>
+
+    Remember: When a memory warning is present, using the exact memory keys is MANDATORY."""
 
 
 class LOCAL_MULTI_FUNCTION_CALL_PROMPT:
@@ -170,4 +205,47 @@ class LOCAL_MULTI_FUNCTION_CALL_PROMPT:
     - Large lists or objects should trigger an immediate working memory check
     - Token efficiency is critical - reuse memory keys whenever possible
 
-    Remember: Include all necessary function calls in a single response, with each call properly formatted and tagged. Always end with an 'end' function call. When working with large data structures, prioritize using memory keys over repeating content."""
+    Remember: Include all necessary function calls in a single response, with each call properly formatted and tagged. Always end with an 'end' function call. When working with large data structures, prioritize using memory keys over repeating content.
+
+    [CRITICAL MEMORY USAGE RULES - MANDATORY]
+    When working memory is provided with a warning like:
+    ```
+    [CRITICAL MEMORY USAGE REQUIREMENT]
+    The following keys are available in working memory and MUST be used:
+    {{
+        "parameter_key": "data",
+        "value_key": "swarm_0_function_name_0",
+        ...
+    }}
+    ```
+    YOU MUST:
+    1. Use the exact memory keys provided in the warning
+    2. NEVER recreate or inline data that exists in memory
+    3. ALWAYS use the memory key instead of the actual data
+    4. Follow the parameter_key to value_key mapping exactly
+
+    [VIOLATION CONSEQUENCES]
+    - Creating new data when a memory key exists is a CRITICAL ERROR
+    - Your response will be REJECTED if you don't use provided memory keys
+    - Multiple violations will result in task failure
+    - No exceptions to this rule are allowed
+
+    Example with Memory Warning:
+    User: With working memory warning:
+    {{
+        "parameter_key": "data_batch_1",
+        "value_key": "swarm_0_data_0"
+    }},
+    {{
+        "parameter_key": "data_batch_2",
+        "value_key": "swarm_1_data_0"
+    }}
+    Assistant: 
+    <functioncall> {{"name": "process_batch", "parameters": {{"data": "swarm_0_data_0"}} }} </functioncall>
+    <functioncall> {{"name": "process_batch", "parameters": {{"data": "swarm_1_data_0"}} }} </functioncall>
+    <functioncall> {{"name": "end", "parameters": {{"status": "complete"}} }} </functioncall>
+
+    INCORRECT (will be rejected):
+    <functioncall> {{"name": "process_batch", "parameters": {{"data": [{{"id": 1}}, {{"id": 2}}]}} }} </functioncall>
+
+    Remember: When a memory warning is present, using the exact memory keys is MANDATORY."""
