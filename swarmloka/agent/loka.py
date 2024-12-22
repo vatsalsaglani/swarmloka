@@ -260,9 +260,9 @@ class Loka:
         response = await self.llm.function_call(messages, model_name,
                                                 required_key_function,
                                                 **llm_args)
-        print(
-            f"WORKING MEMORY VERIFICATION RESPONSE: {json.dumps(response, indent=2)}"
-        )
+        # print(
+        #     f"WORKING MEMORY VERIFICATION RESPONSE: {json.dumps(response, indent=2)}"
+        # )
         if len(response) == 0:
             return None
         return response[-1].get("parameters")
@@ -276,9 +276,9 @@ class Loka:
                              llm_args: Optional[Dict] = {}):
         required_keys_available_in_working_memory = await self._verify_input_available_in_working_memory(
             model_name, agent_name, llm_args)
-        print(
-            f"REQUIRED KEYS AVAILABLE IN WORKING MEMORY: {required_keys_available_in_working_memory}"
-        )
+        # print(
+        #     f"REQUIRED KEYS AVAILABLE IN WORKING MEMORY: {required_keys_available_in_working_memory}"
+        # )
         function = self.swarm_map[agent_name]
         function_list = list(
             map(
@@ -334,10 +334,10 @@ class Loka:
                                              llm_args)
         try:
             response = response[-1]
-            print(f"RESPONSE PRE PARSE: {json.dumps(response, indent=2)}")
+            # print(f"RESPONSE PRE PARSE: {json.dumps(response, indent=2)}")
             response["parameters"] = self._parse_function_parameters(
                 response["parameters"])
-            print(f"RESPONSE POST PARSE: {json.dumps(response, indent=2)}")
+            # print(f"RESPONSE POST PARSE: {json.dumps(response, indent=2)}")
         except KeyError as error:
             curr_depth += 1
             if curr_depth > max_rec_depth:
