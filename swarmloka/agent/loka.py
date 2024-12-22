@@ -77,11 +77,23 @@ class Loka:
     def _parse_function_parameters(self, parameters: Dict):
 
         def parse_value(value):
+            # Handle direct memory key references (old style)
             if isinstance(value, str) and value.startswith("swarm_"):
                 if value in self.working_output_memory:
                     return self.working_output_memory[value]
                 raise KeyError(
                     f"Key {value} is not in the working output memory.")
+
+            # Handle ContextVariable format
+            if isinstance(value, dict) and "ctx_key" in value:
+                ctx_key = value["ctx_key"]
+                if ctx_key in self.working_output_memory:
+                    return self.working_output_memory[ctx_key]
+                raise KeyError(
+                    f"Context key {ctx_key} is not in the working output memory."
+                )
+
+            # Handle lists and dictionaries recursively
             elif isinstance(value, (list, tuple)):
                 return type(value)([parse_value(v) for v in value])
             elif isinstance(value, dict):
