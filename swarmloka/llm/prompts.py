@@ -33,6 +33,53 @@ class LOCAL_SINGLE_FUNCTION_CALL_PROMPT:
     - It's critical to reuse memory keys for large parameter values to save tokens
     - When handling lists or objects with more than 5 items, prioritize finding memory references
 
+    When a parameter accepts ContextVariable, you MUST use this format:
+    {{
+        "ctx_key": "swarm_X_function_name_0",
+        "description": "Description of what this memory contains",
+        "content_type": "The type of content (e.g., 'List[Dict]', 'string', etc.)"
+    }}
+
+    Examples:
+    1. Image Analysis Pipeline:
+    Working Memory: {{
+        "swarm_0_function_detect_objects_0": [
+            {{"label": "car", "confidence": 0.95, "bbox": [100, 200, 300, 400]}},
+            {{"label": "person", "confidence": 0.88, "bbox": [50, 150, 100, 300]}}
+        ]
+    }}
+    <functioncall> {{
+        "name": "analyze_scene",
+        "parameters": {{
+            "detected_objects": {{
+                "ctx_key": "swarm_0_function_detect_objects_0",
+                "description": "Object detection results with bounding boxes",
+                "content_type": "List[Dict]"
+            }}
+        }}
+    }} </functioncall>
+
+    2. Text Analysis Pipeline:
+    Working Memory: {{
+        "swarm_0_function_extract_keywords_0": ["climate", "renewable", "energy"],
+        "swarm_1_function_sentiment_0": "positive"
+    }}
+    <functioncall> {{
+        "name": "generate_summary",
+        "parameters": {{
+            "keywords": {{
+                "ctx_key": "swarm_0_function_extract_keywords_0",
+                "description": "Extracted key topics from text",
+                "content_type": "List[str]"
+            }},
+            "sentiment": {{
+                "ctx_key": "swarm_1_function_sentiment_0",
+                "description": "Overall sentiment of the text",
+                "content_type": "string"
+            }}
+        }}
+    }} </functioncall>
+
     5. Few-Shot Examples:
 
     User: "First check the weather in London, then book a taxi"
@@ -165,6 +212,53 @@ class LOCAL_MULTI_FUNCTION_CALL_PROMPT:
     - It's critical to reuse memory keys for large parameter values to save tokens
     - When handling lists or objects with more than 5 items, prioritize finding memory references
 
+    When a parameter accepts ContextVariable, you MUST use this format:
+    {{
+        "ctx_key": "swarm_X_function_name_0",
+        "description": "Description of what this memory contains",
+        "content_type": "The type of content (e.g., 'List[Dict]', 'string', etc.)"
+    }}
+
+    Examples:
+    1. Image Analysis Pipeline:
+    Working Memory: {{
+        "swarm_0_function_detect_objects_0": [
+            {{"label": "car", "confidence": 0.95, "bbox": [100, 200, 300, 400]}},
+            {{"label": "person", "confidence": 0.88, "bbox": [50, 150, 100, 300]}}
+        ]
+    }}
+    <functioncall> {{
+        "name": "analyze_scene",
+        "parameters": {{
+            "detected_objects": {{
+                "ctx_key": "swarm_0_function_detect_objects_0",
+                "description": "Object detection results with bounding boxes",
+                "content_type": "List[Dict]"
+            }}
+        }}
+    }} </functioncall>
+
+    2. Text Analysis Pipeline:
+    Working Memory: {{
+        "swarm_0_function_extract_keywords_0": ["climate", "renewable", "energy"],
+        "swarm_1_function_sentiment_0": "positive"
+    }}
+    <functioncall> {{
+        "name": "generate_summary",
+        "parameters": {{
+            "keywords": {{
+                "ctx_key": "swarm_0_function_extract_keywords_0",
+                "description": "Extracted key topics from text",
+                "content_type": "List[str]"
+            }},
+            "sentiment": {{
+                "ctx_key": "swarm_1_function_sentiment_0",
+                "description": "Overall sentiment of the text",
+                "content_type": "string"
+            }}
+        }}
+    }} </functioncall>
+
     5. Few-Shot Examples:
 
     User: "Check weather in London and New York"
@@ -244,7 +338,7 @@ class LOCAL_MULTI_FUNCTION_CALL_PROMPT:
     <functioncall> {{"name": "process_batch", "parameters": {{"data": "swarm_0_data_0"}} }} </functioncall>
     <functioncall> {{"name": "process_batch", "parameters": {{"data": "swarm_1_data_0"}} }} </functioncall>
     <functioncall> {{"name": "end", "parameters": {{"status": "complete"}} }} </functioncall>
-
+    
     INCORRECT (will be rejected):
     <functioncall> {{"name": "process_batch", "parameters": {{"data": [{{"id": 1}}, {{"id": 2}}]}} }} </functioncall>
 
