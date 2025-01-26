@@ -16,6 +16,7 @@ class Agent(BaseModel):
     name: str
     instruction: str
     functions: List[Dict[str, Any]]
+    exit_here: bool = False
 
 
 class End(BaseModel):
@@ -35,3 +36,23 @@ class ContextVariable(BaseModel):
         ...,
         description=
         "Type of the content (e.g., 'list', 'dict', 'string', 'List[Dict]')")
+
+
+class OrchestratorAgentThinking(BaseModel):
+    observe: Union[List[str], None] = Field(
+        ...,
+        description=
+        "List of Observations of the environment and what's completed. Write your obeservation from all user and assistant interactions."
+    )
+    think: Union[List[str], None] = Field(
+        ...,
+        description=
+        "List of Thoughts on what to do next. Write your thoughts based on the observations from all user and assistant interactions."
+    )
+    action: Union[str, None] = Field(
+        ...,
+        description=
+        "Action to take. Write your action based on the thoughts from all user and assistant interactions. Action should be a valid agent name."
+    )
+    agent_name: str = Field(...,
+                            description="Valid agent name based on the action")
