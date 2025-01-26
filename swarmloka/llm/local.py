@@ -175,9 +175,16 @@ class LocalLLM(BaseLLM):
                     content = content + f" Use function {{'function_call': '{function_call}'}}"
                     # print(f"NOT AUTO FUNCTION CALLCONTENT:\n {content}")
                     messages[-1]["content"] = content
+            system_prompt = ""
+            if messages[0].get("role") == "system":
+                system_prompt = messages[0].get("content", "")
+            if len(system_prompt) > 0:
+                system_prompt = f'Assume the following role: {system_prompt} and then call the appropriate function.' + "\n\n" + function_call_prompt
+            else:
+                system_prompt = function_call_prompt
             _messages = [{
                 "role": "system",
-                "content": function_call_prompt
+                "content": system_prompt
             }] + messages
             depth = 0
             max_depth = 5
